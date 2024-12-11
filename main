@@ -1,0 +1,71 @@
+# Чтение данных
+def read_data(file_path):
+    with open(file_path, 'r', encoding='utf-16') as file:
+        data = file.readlines()
+    header = data[0].strip().split('\t')
+    rows = [line.strip().split('\t') for line in data[1:]]
+    return [dict(zip(header, row)) for row in rows]
+
+# Преобразование в словарь
+def process_data(data_2019, data_2020):
+    return {
+        "2019": data_2019,
+        "2020": data_2020
+    }
+
+# Метрики
+def calculate_metrics(data):
+    metrics = {}
+    
+    # Топ-5 статей по числу осужденных
+    metrics['top_articles'] = sorted(data, key=lambda x: int(x['Всего осуждено']), reverse=True)[:5]
+    
+    # Статьи с пожизненными приговорами
+    metrics['life_sentences'] = sorted(data, key=lambda x: int(x['Пожизненное лишение свободы']), reverse=True)[:3]
+    
+    # Альтернативные наказания
+    metrics['alternative_punishments'] = sorted(data, key=lambda x: int(x['Исправительные работы']), reverse=True)[:3]
+    
+    # Минимальное число осужденных
+    metrics['min_convictions'] = sorted(data, key=lambda x: int(x['Всего осуждено']))[:3]
+    
+    return metrics
+
+# Тренды
+def calculate_trends(data_2019, data_2020):
+    trends = []
+    for record_2020 in data_2020:
+        for record_2019 in data_2019:
+            if record_2020['Статья'] == record_2019['Статья']:
+                diff = int(record_2020['Всего осуждено']) - int(record_2019['Всего осуждено'])
+                trends.append({
+                    "Статья": record_2020['Статья'],
+                    "Название": record_2020['Название'],
+                    "2020": record_2020['Всего осуждено'],
+                    "2019": record_2019['Всего осуждено'],
+                    "Изменение": diff
+                })
+    return sorted(trends, key=lambda x: x['Изменение'], reverse=True)[:5]
+
+# Сохранение результатов
+def save_results(metrics, trends, output_file):
+    with open(output_file, 'w', encoding='utf-8') as file:
+        file.write("Метрики:\n")
+        for key, value in metrics.items():
+            file.write(f"{key}:\n")
+            for item in value:
+                file.write(f"{item}\n")
+        file.write("\nТренды:\n")
+        for trend in trends:
+            file.write(f"{trend}\n")
+
+# Основная программа
+data_2019 = read_data('датасет 2019 .csv')
+data_2020 = read_data('датасет 2020 .csv')
+
+processed_data = process_data(data_2019, data_2020)
+metrics_2019 = calculate_metrics(processed_data['2019'])
+metrics_2020 = calculate_metrics(processed_data['2020'])
+trends = calculate_trends(processed_data['2019'], processed_data['2020'])
+
+save_results({2019: metrics_2019, 2020: metrics_2020}, trends, 'analysis_results.txt')
